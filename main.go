@@ -32,6 +32,6 @@ func main() {
 		Handler: corsMux,
 	}
 
-	fmt.Printf("Server listing on port %s...\n", PORT)
+	fmt.Printf("Server listening on port %s...\n", PORT)
 	server.ListenAndServe()
 }
