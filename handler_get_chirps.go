@@ -10,6 +10,8 @@ import (
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	authorID := r.URL.Query().Get("author_id")
+	sortParam := r.URL.Query().Get("sort")
+
 	var dbChirps []database.Chirp
 	var err error
 
@@ -29,12 +31,19 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 		dbChirps, err = cfg.DB.GetChirps()
 	}
 
+	if sortParam == "" {
+		sortParam = "asc"
+	}
+
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't get chirps")
 		return
 	}
 
 	sort.Slice(dbChirps, func(i, j int) bool {
+		if sortParam == "desc" {
+			return dbChirps[i].ID > dbChirps[j].ID
+		}
 		return dbChirps[i].ID < dbChirps[j].ID
 	})
 
