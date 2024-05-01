@@ -4,29 +4,41 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+
+	"github.com/ross-brown/chirpy-go/internal/database"
 )
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
-	dbChirps, err := cfg.DB.GetChirps()
+	authorID := r.URL.Query().Get("author_id")
+	var dbChirps []database.Chirp
+	var err error
+
+	if authorID != "" {
+		authorIDInt, err := strconv.Atoi(authorID)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Couldn't convert string to int for author ID")
+			return
+		}
+
+		dbChirps, err = cfg.DB.GetUserChirps(authorIDInt)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't get chirps")
+			return
+		}
+	} else {
+		dbChirps, err = cfg.DB.GetChirps()
+	}
+
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't get chirps")
 		return
 	}
 
-	chirps := []Chirp{}
-	for _, dbChirp := range dbChirps {
-		chirps = append(chirps, Chirp{
-			ID:       dbChirp.ID,
-			Body:     dbChirp.Body,
-			AuthorID: dbChirp.AuthorID,
-		})
-	}
-
-	sort.Slice(chirps, func(i, j int) bool {
-		return chirps[i].ID < chirps[j].ID
+	sort.Slice(dbChirps, func(i, j int) bool {
+		return dbChirps[i].ID < dbChirps[j].ID
 	})
 
-	respondWithJSON(w, http.StatusOK, chirps)
+	respondWithJSON(w, http.StatusOK, dbChirps)
 }
 
 func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, r *http.Request) {
