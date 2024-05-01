@@ -16,8 +16,9 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	chirps := []Chirp{}
 	for _, dbChirp := range dbChirps {
 		chirps = append(chirps, Chirp{
-			ID:   dbChirp.ID,
-			Body: dbChirp.Body,
+			ID:       dbChirp.ID,
+			Body:     dbChirp.Body,
+			AuthorID: dbChirp.AuthorID,
 		})
 	}
 
@@ -41,7 +42,8 @@ func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, Chirp{
-		ID:   dbChirp.ID,
-		Body: dbChirp.Body,
+		ID:       dbChirp.ID,
+		Body:     dbChirp.Body,
+		AuthorID: dbChirp.AuthorID,
 	})
 }
