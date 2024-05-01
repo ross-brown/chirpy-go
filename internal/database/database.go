@@ -80,3 +80,20 @@ func (db *DB) writeDB(dbStructure DBStructure) error {
 
 	return nil
 }
+
+func (db *DB) ResetDatabase() error {
+	_, err := os.Stat("database.json")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	err = os.Remove("database.json")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

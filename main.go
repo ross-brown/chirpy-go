@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -18,26 +17,29 @@ type apiConfig struct {
 }
 
 func main() {
-	debugPtr := flag.Bool("debug", false, "Enable debug mode")
-	flag.Parse()
-
-	if *debugPtr {
-		err := resetDatabase()
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("database.json wiped")
-	}
-
-	godotenv.Load()
-	jwtSecret := os.Getenv("JWT_SECRET")
-
 	const PORT = "8080"
 	const FILEPATH_ROOT = "."
+
+	godotenv.Load()
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET env is not set")
+	}
 
 	db, err := database.NewDB("database.json")
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	debugPtr := flag.Bool("debug", false, "Enable debug mode")
+	flag.Parse()
+
+	if *debugPtr && debugPtr != nil {
+		err := db.ResetDatabase()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	apiCfg := &apiConfig{
@@ -53,16 +55,19 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("GET /api/reset", apiCfg.handlerResetMetrics)
 
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerWebhooks)
+
+	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
+	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefreshToken)
+	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeToken)
+
+	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	mux.HandleFunc("PUT /api/users", apiCfg.handlerUpdateUser)
+
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetChirp)
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerDeleteChirp)
-
-	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
-	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
-	mux.HandleFunc("PUT /api/users", apiCfg.handlerUpdateUser)
-	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefreshToken)
-	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeToken)
 
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 
@@ -73,23 +78,6 @@ func main() {
 		Handler: corsMux,
 	}
 
-	fmt.Printf("Server listening on port %s...\n", PORT)
-	server.ListenAndServe()
-}
-
-func resetDatabase() error {
-	_, err := os.Stat("database.json")
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-
-	err = os.Remove("database.json")
-	if err != nil {
-		return err
-	}
-
-	return nil
+	log.Printf("Serving files from %s on port: %s\n", FILEPATH_ROOT, PORT)
+	log.Fatal(server.ListenAndServe())
 }
