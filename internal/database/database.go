@@ -3,6 +3,7 @@ package database
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
 	"sync"
 )
@@ -18,7 +19,6 @@ type DBStructure struct {
 	RefreshTokens map[string]RefreshToken `json:"refresh_tokens"`
 }
 
-// Creates a new DB connection and creates the DB file if not exist
 func NewDB(path string) (*DB, error) {
 	db := &DB{
 		path: path,
@@ -34,18 +34,24 @@ func (db *DB) createDB() error {
 		Users:         map[int]User{},
 		RefreshTokens: map[string]RefreshToken{},
 	}
-	return db.writeDB(dbStructure)
+	err := db.writeDB(dbStructure)
+	if err != nil {
+		log.Printf("Error writing DB: %v\n", err)
+		return err
+	}
+	log.Printf("Database file created successfully at path: %s\n", db.path)
+	return nil
 }
 
 func (db *DB) ensureDB() error {
 	_, err := os.ReadFile(db.path)
 	if errors.Is(err, os.ErrNotExist) {
+		log.Println("Database file does not exist, creating...")
 		return db.createDB()
 	}
 	return err
 }
 
-// reads the db file into memory
 func (db *DB) loadDB() (DBStructure, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
@@ -63,7 +69,6 @@ func (db *DB) loadDB() (DBStructure, error) {
 	return dbStructure, nil
 }
 
-// writes the db file to disk
 func (db *DB) writeDB(dbStructure DBStructure) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -82,18 +87,9 @@ func (db *DB) writeDB(dbStructure DBStructure) error {
 }
 
 func (db *DB) ResetDatabase() error {
-	_, err := os.Stat("database.json")
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
+	err := os.Remove(db.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
 	}
-
-	err = os.Remove("database.json")
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return db.ensureDB()
 }

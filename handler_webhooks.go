@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/ross-brown/chirpy-go/internal/auth"
 )
 
 func (cfg *apiConfig) handlerWebhooks(w http.ResponseWriter, r *http.Request) {
@@ -14,9 +16,15 @@ func (cfg *apiConfig) handlerWebhooks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	apiKey, err := auth.GetApiKey(r.Header)
+	if err != nil || apiKey != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "Invalid or missing API Key")
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode request body")
 		return

@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,16 +17,19 @@ type User struct {
 func (db *DB) CreateUser(email string, password string) (User, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
+		fmt.Println("ERROR LOADING DB")
 		return User{}, err
 	}
 
 	_, err = db.GetUserByEmail(email)
 	if err == nil {
+		fmt.Println("USER EXISTS ALREADY")
 		return User{}, errors.New("this email already exists")
 	}
 
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	if err != nil {
+		fmt.Println("ERROR GETTING HASH")
 		return User{}, err
 	}
 
@@ -40,6 +44,7 @@ func (db *DB) CreateUser(email string, password string) (User, error) {
 
 	err = db.writeDB(dbStructure)
 	if err != nil {
+		fmt.Println("ERROR WRITING TO DB")
 		return User{}, err
 	}
 
